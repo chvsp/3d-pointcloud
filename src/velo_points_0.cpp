@@ -30,11 +30,11 @@ using namespace std;
 
 void clustering(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
 {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_f (new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::VoxelGrid<pcl::PointXYZ> vg;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_f (new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::VoxelGrid<pcl::PointXYZ> vg;
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
   vg.setInputCloud (cloud);
-  vg.setLeafSize (0.1f, 0.1f, 0.1f);
+  vg.setLeafSize (0.01f, 0.01f, 0.01f);
   vg.filter (*cloud_filtered);
   std::cout << "PointCloud after filtering has: " << cloud_filtered->points.size ()  << " data points." << std::endl; //*
 
@@ -47,7 +47,7 @@ void clustering(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
   seg.setOptimizeCoefficients (true);
   seg.setModelType (pcl::SACMODEL_PLANE);
   seg.setMethodType (pcl::SAC_RANSAC);
-  seg.setMaxIterations (1000);
+  seg.setMaxIterations (100);
   seg.setDistanceThreshold (0.02);
 
   int i=0, nr_points = (int) cloud_filtered->points.size ();
@@ -81,22 +81,19 @@ void clustering(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
   // Creating the KdTree object for the search method of the extraction
   pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
   tree->setInputCloud (cloud_filtered);
-  cout <<"before\n";
+
   std::vector<pcl::PointIndices> cluster_indices;
   pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
   ec.setClusterTolerance (0.02); // 2cm
-  ec.setMinClusterSize (50);
-  ec.setMaxClusterSize (100);
-  cout <<"1\n";
+  ec.setMinClusterSize (100);
+  ec.setMaxClusterSize (25000);
   ec.setSearchMethod (tree);
-  cout <<"2\n";
   ec.setInputCloud (cloud_filtered);
-  cout <<"4\n";
-  cout <<"hello\n";
- 
+  ec.extract (cluster_indices);
+  cout <<"hello";
   int j = 0;
   cout << bool(cluster_indices.begin() == cluster_indices.end());
-  for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end ()++; ++it)
+  for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
   {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ>);
     for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); ++pit)
@@ -105,13 +102,25 @@ void clustering(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
     cloud_cluster->height = 1;
     cloud_cluster->is_dense = true;
 
+   // pcl::visualization::CloudViewer viewer ("Simple Cloud Viewer");
+   // viewer.showCloud (cloud_cluster);
+   // getchar();
+   // while (!viewer.wasStopped ())
+   // {
+   // }
+   // getchar();
     std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
     std::stringstream ss;
     ss << "cloud_cluster_" << j << ".pcd";
-    writer.write<pcl::PointXYZ> (ss.str (), *cloud_cluster, false); //*
-    pcl::io::savePCDFileASCII (ss.str(), *cloud);
+    // writer.write<pcl::PointXYZ> (ss.str (), *cloud_cluster, false); //*
+    // pcl::io::savePCDFileASCII (ss.str(), *cloud);
+    ofstream f1;
+    f1.open("hi");
+    f1 << "Hello\n";
+    f1.close();
+    cout << "Print\n";
+    j++;
   }
-
   cout << "End\n";
 }
 
@@ -121,45 +130,45 @@ int i = 0;
 void chatterCallback(const sensor_msgs::PointCloud2& input)
 {
 
-  // pcl::visualization::CloudViewer::CloudViewer("Hello");
-  pcl::PCLPointCloud2 pcl_pc2;
+	// pcl::visualization::CloudViewer::CloudViewer("Hello");
+	pcl::PCLPointCloud2 pcl_pc2;
   pcl_conversions::toPCL(input,pcl_pc2);
   pcl::PointCloud<pcl::PointXYZ>::Ptr ip(new pcl::PointCloud<pcl::PointXYZ>);
   pcl::fromPCLPointCloud2(pcl_pc2,*ip);
 
    p = *ip;
 
-  // std::cout << p.points[1].x << " " << p.points[1].y << " " << p.points[1].z << " " << p.points[1].ring << endl; 
+	// std::cout << p.points[1].x << " " << p.points[1].y << " " << p.points[1].z << " " << p.points[1].ring << endl; 
 
-  // ros::Publisher chatter_pub = n.advertise< pcl::PointCloud<pcl::PointXYZ> >("pcl_pointcloud", 100);
+	// ros::Publisher chatter_pub = n.advertise< pcl::PointCloud<pcl::PointXYZ> >("pcl_pointcloud", 100);
 
-  // chatter_pub.publish(p.makeShared());
-   if(i==0)
-    clustering(ip);
+	// chatter_pub.publish(p.makeShared());
+   // if(i==0)
+   	clustering(ip);
 
    ++i;
-  return;
+	return;
 }
 
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "pointcloud");
-  
-  ros::NodeHandle n;
+	ros::init(argc, argv, "pointcloud");
+	
+	ros::NodeHandle n;
 
-  ros::NodeHandle m;
-  ros::Subscriber sub = n.subscribe("/velodyne_points", 1000000, chatterCallback);
+	ros::NodeHandle m;
+	ros::Subscriber sub = n.subscribe("/velodyne_points", 1000000, chatterCallback);
 
-  // ros::Publisher chatter_pub = m.advertise< pcl::PointCloud<velodyne_pointcloud::PointXYZIR> >("pcl_pointcloud", 100);
+	// ros::Publisher chatter_pub = m.advertise< pcl::PointCloud<velodyne_pointcloud::PointXYZIR> >("pcl_pointcloud", 100);
 
-  
+	
 
-  // std::cout << typeid(p.makeShared()).name() << endl;
-  // chatter_pub.publish(p.makeShared());
+	// std::cout << typeid(p.makeShared()).name() << endl;
+	// chatter_pub.publish(p.makeShared());
 
-  ros::spin();
+	ros::spin();
 
-  return 0;
+	return 0;
 }
 
